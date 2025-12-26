@@ -51,26 +51,20 @@
 #### **2. VB.NET 示例 (VB.NET Example)**
 
 ```vbnet
-Module Test
-    Private ReadOnly svr As New WebAPI
+Imports System.Net
+Imports MicroServer
 
+Module FastTest
+    Private ReadOnly MyAPI As New WebAPIServer
     Sub Main()
-        ' 1. 配置 (可选)
-        svr.SimpleToken = "my_secure_token"
-
-        ' 2. 添加路由
-        svr.Routes.Add("/api/hello", AddressOf HelloWorld)
-
-        ' 3. 启动服务
-        svr.StartServer(8090) ' 监听 8090 端口
-
-        Console.WriteLine("MicroServer 已启动，访问 http://localhost:8090/api/hello")
+        MyAPI.AddRoute("/", AddressOf hello) '添加路由映射
+        MyAPI.StartServer() '启动 WebAPI 服务,默认端口8090 传入参数可修改端口
+        Console.WriteLine("访问地址：http://127.0.0.1:8090")
         Console.ReadKey()
     End Sub
 
-    ' 你的业务逻辑
-    Private Async Function HelloWorld(request As HttpListenerRequest, response As HttpListenerResponse) As Task
-        Await response.WriteAsync("Hello, MicroServer!")
+    Private Async Function hello(request As HttpListenerRequest, response As HttpListenerResponse) As Task
+        Await response.WriteAsync(<t>{"code":1,"msg":"Hello WebAPI"}</t>.Value)
     End Function
 End Module
 ```
@@ -78,32 +72,32 @@ End Module
 #### **3. C# 示例 (C# Example)**
 
 ```csharp
-using System;
-using System.Threading.Tasks;
+using System.Net;
+using MicroServer; 
 
-class Program
+namespace FastTestNamespace // C#需显式声明命名空间
 {
-    private static readonly WebAPI svr = new WebAPI();
-
-    static void Main()
+    public static class FastTest
     {
-        // 1. 配置 (可选)
-        svr.SimpleToken = "my_secure_token";
+        private static readonly WebAPIServer MyAPI = new WebAPIServer();
 
-        // 2. 添加路由
-        svr.Routes.Add("/api/hello", HelloWorld);
+        public static void Main()
+        {
+            // 添加路由映射（C#中用委托引用方法）
+            MyAPI.AddRoute("/", Hello);
+            // 启动服务（默认8090端口）
+            MyAPI.StartServer();
+            
+            Console.WriteLine("访问地址：http://127.0.0.1:8090");
+            Console.ReadKey();
+        }
 
-        // 3. 启动服务
-        svr.StartServer(8090);
-
-        Console.WriteLine("MicroServer 已启动，访问 http://localhost:8090/api/hello");
-        Console.ReadKey();
-    }
-
-    // 你的业务逻辑
-    private static async Task HelloWorld(HttpListenerRequest request, HttpListenerResponse response)
-    {
-        await response.WriteAsync("Hello, MicroServer!");
+        // 异步处理方法（C#的async/await语法）
+        private static async Task Hello(HttpListenerRequest request, HttpListenerResponse response)
+        {
+            // VB的XML字面量<t>...</t>.Value在C#中直接用字符串替代
+            await response.WriteAsync("{\"code\":1,\"msg\":\"Hello WebAPI\"}");
+        }
     }
 }
 ```
@@ -112,7 +106,6 @@ class Program
 
 ### **详细文档 (Documentation)**
 
-这里是存放详细使用指南的地方。随着项目功能的增加，你可以在这里分章节详细介绍。
 
 *   **[WebAPI 服务端](docs/webapi-server.md)**
     *   路由管理
@@ -154,7 +147,3 @@ class Program
 本项目采用 **MIT 许可证** - 详情请查看 [LICENSE](LICENSE) 文件。
 
 ---
-
-这个模板已经包含了开源项目 README 的所有关键部分。你可以直接复制使用，并根据 MicroServer 的实际情况来填充和修改内容。
-
-需要我帮你把这个模板里的某个部分，比如 **详细文档** 或 **贡献指南**，先写一个初稿出来吗？
