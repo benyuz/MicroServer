@@ -1,0 +1,44 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>MicroServer</RootNamespace>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <GenerateDocumentationFile>False</GenerateDocumentationFile>
+    <AssemblyVersion>1.1</AssemblyVersion>
+    <FileVersion>1.1</FileVersion>
+    <Title>MicroServer</Title>
+    <Authors>juziyu</Authors>
+    <PackageProjectUrl>https://www.juziyu.cn</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/benyuz/MicroServer</RepositoryUrl>
+    <Description>MicroServer是一款内嵌式高性能跨平台 WebAPI 框架，基于.NET Standard 2.0 构建，集成简单、不侵业务、开箱即用。免 IIS、单 DLL 即可让程序快速具备 WebAPI 能力，非常适合轻量部署、跨平台及 AOT 编译需求。</Description>
+    <PackageIcon>WebAPI.png</PackageIcon>
+    <PackageReadmeFile>README.MD</PackageReadmeFile>
+    <Copyright>juziyu.cn</Copyright>
+    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Update="LICENSE.txt">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Update="README.MD">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Update="WebAPI.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
+</Project>
