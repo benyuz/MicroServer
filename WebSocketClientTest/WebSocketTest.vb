@@ -1,4 +1,4 @@
-﻿Imports VBWebAPI
+﻿Imports MicroServer
 Module WebSocketTest
 
     ' 声明 WebSocket 客户端

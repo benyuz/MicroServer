@@ -1,4 +1,5 @@
 Imports System.Data.Common
+Imports System.IO
 Imports System.Net
 Imports System.Net.Sockets
 Imports System.Security.Cryptography
@@ -68,7 +69,12 @@ Public Class WebAPIServer
     ''' <summary>
     ''' 路由白名单，白名单内的路由不进行验证
     ''' </summary>
-    Public ReadOnly RouteWhiteList As New List(Of String)
+    Private ReadOnly RouteWhiteList As New List(Of String)
+
+    ''' <summary>
+    ''' 中间件列表
+    ''' </summary>
+    Private ReadOnly Middlewares As New List(Of Func(Of HttpListenerRequest, HttpListenerResponse, Task(Of Boolean)))
 
     ''' <summary>
     ''' 添加路由映射,并可选择限定请求方法
@@ -86,6 +92,79 @@ Public Class WebAPIServer
     End Sub
 
     ''' <summary>
+    ''' 添加中间件（适配布尔值返回类型）
+    ''' </summary>
+    ''' <param name="handler">中间件委托</param>
+    Public Sub AddMiddleware(handler As Func(Of HttpListenerRequest, HttpListenerResponse, Task(Of Boolean)))
+        ' 保留非空判断，避免空委托
+        If handler IsNot Nothing Then
+            Middlewares.Add(handler)
+        End If
+    End Sub
+
+    ''' <summary>
+    ''' 添加简单token
+    ''' </summary>
+    ''' <param name="token"></param>
+    Public Sub AddSimpleTokenVerify(token As String)
+        If String.IsNullOrWhiteSpace(token) Then Return
+        SimpleToken = token
+        AddMiddleware(AddressOf SimpleTokenVerify)
+    End Sub
+
+    ''' <summary>
+    ''' 简单Token验证，验证成功继续执行，验证失败自动中断请求
+    ''' </summary>
+    ''' <param name="request"></param>
+    ''' <param name="response"></param>
+    ''' <returns>验证通过返回True，验证失败返回False</returns>
+    Private Async Function SimpleTokenVerify(request As HttpListenerRequest, response As HttpListenerResponse) As Task(Of Boolean)
+        '白名单校验
+        If RouteWhiteList.Contains(request.Url.AbsolutePath) Then Return True
+        '简单token验证
+        Dim token = request.GetToken()
+        If token = SimpleToken Then
+            Await Task.CompletedTask
+            Return True
+        Else
+            response.StatusCode = 401
+            Await response.WriteAsync("Unauthorized")
+            Return False
+        End If
+    End Function
+
+    ''' <summary>
+    ''' 添加JWT验证，验证成功继续执行，验证失败自动中断请求
+    ''' </summary>
+    ''' <param name="pwd">JWT加密密码，采用HS256加密</param>
+    Public Sub AddJwtTokenVerify(pwd As String)
+        If String.IsNullOrWhiteSpace(pwd) Then Return
+        JWT.PassWord = pwd
+        AddMiddleware(AddressOf JwtTokenVerify)
+    End Sub
+
+    ''' <summary>
+    ''' JWT验证
+    ''' </summary>
+    ''' <param name="request"></param>
+    ''' <param name="response"></param>
+    ''' <returns>验证通过返回True，急促实行，验证失败返回False</returns>
+    Private Async Function JwtTokenVerify(request As HttpListenerRequest, response As HttpListenerResponse) As Task(Of Boolean)
+        '白名单校验
+        If RouteWhiteList.Contains(request.Url.AbsolutePath) Then Return True
+        'JWT验证
+        Dim token = request.GetToken()
+        If JWT.VerifyToken(token) Then
+            Await Task.CompletedTask
+            Return True
+        Else
+            response.StatusCode = 401
+            Await response.WriteAsync("Unauthorized")
+            Return False
+        End If
+    End Function
+
+    ''' <summary>
     ''' JWT处理类
     ''' </summary>
     Public Class JWTclass
@@ -94,7 +173,6 @@ Public Class WebAPIServer
         ''' JWT加密密码 默认为 mr123456，建议自行修改
         ''' </summary>
         Public PassWord As String = "mr123456"
-        Public Enabled As Boolean
 
         ''' <summary>
         ''' 验证token，加密算法HS256，请求时需要在请求头中Authorization字段中设置Bearer 标记
@@ -115,14 +193,9 @@ Public Class WebAPIServer
         ''' <param name="token"></param>
         ''' <returns></returns>
         Function DecodePayload(token As String) As String
-            If Enabled Then
-                Dim parts As String() = token.Split("."c)
-                ' 解码 Payload 部分 (Base64Url 解码)
-                Return DecodeBase64Url(parts(1))
-            Else
-                Return ""
-            End If
-
+            Dim parts As String() = token.Split("."c)
+            ' 解码 Payload 部分 (Base64Url 解码)
+            Return DecodeBase64Url(parts(1))
         End Function
         ''' <summary>
         ''' 创建Token，加密算法HS256，先设置PassWord
@@ -237,20 +310,24 @@ Public Class WebAPIServer
                     Await Response.WriteAsync("Not Found")
                     Continue While
                 End If
-
-                '验证请求是否授权
-                If RouteWhiteList.Contains(path) OrElse VertifyRequest(request.GetToken) Then '验证成功
-                    If request.IsWebSocketRequest Then
-                        Response.StatusCode = 400
-                        Response.StatusDescription = "Bad Request"
-                        Await Response.WriteAsync("WebSocket Not Supported")
-                    Else '处理HTTP请求
-                        Await Routes(path)(request, Response)
+                '执行中间件
+                For Each middleware In Middlewares
+                    Dim result = Await middleware(request, Response)
+                    '中间件验证成功（True）继续往下执行，验证失败（False）自动中断请求
+                    If result = False Then
+                        Response.Abort() '兜底，终止响应
+                        Continue While
                     End If
-                Else '  验证失败
-                    Response.StatusCode = 401
-                    Await Response.WriteAsync("Unauthorized")
+                Next
+                '继续执行
+                If request.IsWebSocketRequest Then
+                    Response.StatusCode = 400
+                    Response.StatusDescription = "Bad Request"
+                    Await Response.WriteAsync("WebSocket Not Supported")
+                Else '处理HTTP请求
+                    Await Routes(path)(request, Response)
                 End If
+
             Catch ex As Exception
                 ' 记录异常并返回 500 错误
                 Response.StatusCode = 500
@@ -260,28 +337,6 @@ Public Class WebAPIServer
 
         End While
     End Sub
-
-    ''' <summary>
-    ''' 自动验证请求
-    ''' </summary>
-    ''' <returns></returns>
-    Private Function VertifyRequest(token As String) As Boolean
-        '优先jwt验证
-        If JWT.Enabled Then
-            If JWT.VerifyToken(token.TrimStart("Bearer ")) Then
-                Return True
-            Else
-                Return False
-            End If
-        End If
-
-        ' 简单token验证
-        If SimpleToken = token OrElse SimpleToken = "" Then
-            Return True
-        Else
-            Return False
-        End If
-    End Function
 
     ''' <summary>
     ''' 启动服务，单独线程。端口默认8090

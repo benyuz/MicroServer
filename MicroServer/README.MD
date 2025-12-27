@@ -1,4 +1,4 @@
-MicroServer是一款内嵌式高性能跨平台 WebAPI 框架，基于.NET Standard 2.0 构建，集成简单、不侵业务、开箱即用。免 IIS、单 DLL 即可让程序快速具备 WebAPI 能力，非常适合轻量部署、跨平台及 AOT 编译需求。
+MicroServer 是一款可内嵌的轻量级高性能跨平台 WebAPI 框架，可直接嵌入到各类 .NET 应用中快速搭建轻量级 WebAPI 服务，无需依赖 IIS 或 Kestrel。基于 .NET Standard 2.0 构建，开箱即用、不侵入业务、集成简单，完美支持跨平台及 AOT 编译。
 
 VB.NET示例
 
@@ -26,9 +26,9 @@ C#示例
 
 ```csharp
 using System.Net;
-using MicroServer; // 对应VB的Imports MicroServer
+using MicroServer;
 
-namespace FastTestNamespace // C#需显式声明命名空间
+namespace FastTestNamespace
 {
     public static class FastTest
     {
@@ -36,20 +36,17 @@ namespace FastTestNamespace // C#需显式声明命名空间
 
         public static void Main()
         {
-            // 添加路由映射（C#中用委托引用方法）
-            MyAPI.AddRoute("/", Hello);
-            // 启动服务（默认8090端口）
-            MyAPI.StartServer();
+            MyAPI.AddRoute("/", Hello);// 添加路由映射
+            MyAPI.StartServer(); // 启动服务（默认8090端口）
             
             Console.WriteLine("访问地址：http://127.0.0.1:8090");
             Console.ReadKey();
         }
 
-        // 异步处理方法（C#的async/await语法）
+        // 异步处理方法
         private static async Task Hello(HttpListenerRequest request, HttpListenerResponse response)
         {
-            // VB的XML字面量<t>...</t>.Value在C#中直接用字符串替代
-            await response.WriteAsync("{\"code\":1,\"msg\":\"Hello WebAPI\"}");
+          await response.WriteAsync("""{"code":1,"msg":"Hello WebAPI"}""");
         }
     }
 }
